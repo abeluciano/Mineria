@@ -1,5 +1,7 @@
 import pandas as pd
 import math
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Paso 1: Cargar el archivo
 columns = [
@@ -15,20 +17,12 @@ heart.replace("?", None, inplace=True)  # Reemplazar '?' por None
 heart.dropna(inplace=True)  # Eliminar filas con valores faltantes
 heart = heart.astype(float)  # Convertir todas las columnas a float
 
-# Paso 2: Realizar binning manual
-def bin_values(value, bins, labels):
-    for i in range(len(bins) - 1):
-        if bins[i] <= value < bins[i + 1]:
-            return labels[i]
-    return labels[-1]
+# Paso 2: Realizar binning automático con pd.qcut
+# Para `thalach`
+heart['thalach_binned'], thalach_bins = pd.qcut(heart['thalach'], q=3, retbins=True, labels=[0, 1, 2])
 
-thalach_bins = [70, 120, 160, 202]
-thalach_labels = [0, 1, 2]
-heart['thalach_binned'] = heart['thalach'].apply(lambda x: bin_values(x, thalach_bins, thalach_labels))
-
-oldpeak_bins = [0, 1, 3, 6.2]
-oldpeak_labels = [0, 1, 2]
-heart['oldpeak_binned'] = heart['oldpeak'].apply(lambda x: bin_values(x, oldpeak_bins, oldpeak_labels))
+# Para `oldpeak`
+heart['oldpeak_binned'], oldpeak_bins = pd.qcut(heart['oldpeak'], q=3, retbins=True, labels=[0, 1, 2])
 
 # Paso 3: Seleccionar vector de características
 X = heart[['cp', 'thalach_binned', 'ca', 'oldpeak', 'slope', 'thal']].values.tolist()
@@ -77,12 +71,35 @@ distances.sort(key=lambda x: x[1])
 
 # Crear DataFrame con los vecinos más cercanos
 neighbors = pd.DataFrame({
-    "Index": [idx for idx, _ in distances[:1]],  # Obtener los 5 vecinos más cercanos
+    "Index": [idx for idx, _ in distances[:1]],
     "Distance": [dist for _, dist in distances[:1]],
     "Target": [y[idx] for idx, _ in distances[:1]]
 })
 
-# Imprimir resultados
 print(f"Punto consultado: Índice={index_point}, Target={query_target}")
 print("\nVecinos más cercanos:")
 print(neighbors)
+
+# Visualización del binning automático
+sns.set(font_scale=1.25)
+plt.rcParams["figure.figsize"] = (9, 6)
+
+# Visualizar bins para 'thalach'
+plt.figure(figsize=(9, 6))
+sns.histplot(data=heart, x='thalach', bins=30, kde=False, color='blue', alpha=0.7)
+for bin_edge in thalach_bins:
+    plt.axvline(bin_edge, color='red', linestyle='--', ymax=0.95)
+plt.xlabel('Thalach (frecuencia cardíaca máxima)')
+plt.ylabel('Frecuencia')
+plt.title('Distribución de Thalach con Líneas de Binning Automático')
+plt.show()
+
+# Visualizar bins para 'oldpeak'
+plt.figure(figsize=(9, 6))
+sns.histplot(data=heart, x='oldpeak', bins=30, kde=False, color='green', alpha=0.7)
+for bin_edge in oldpeak_bins:
+    plt.axvline(bin_edge, color='red', linestyle='--', ymax=0.95)
+plt.xlabel('Oldpeak (ST depression)')
+plt.ylabel('Frecuencia')
+plt.title('Distribución de Oldpeak con Líneas de Binning Automático')
+plt.show()
